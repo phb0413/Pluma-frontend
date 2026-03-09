@@ -1,13 +1,9 @@
-import axios from "axios";
-
-const api = axios.create({
-    baseURL: "http://localhost:7080", 
-});
+import api from "./axios";
 
 export const getPosts = () => {
-    return api.get("/api/posts");
+    return api.get("/posts");
 };
 
 export const getPostDetail = (id) => {
-    return api.get(`/api/posts/${id}`);
+    return api.get(`/posts/${id}`);
 }
