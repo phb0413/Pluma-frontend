@@ -1,9 +1,11 @@
 <script setup>
 import { useRoute } from "vue-router";
-import { onMounted, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { getPostDetail } from "@/api/postApi";
 import { getCommentScroll } from "@/api/commentApi";
-
+import { useUsername } from "@/store/tokenStore";
+import { deletePost } from "@/api/postApi";
+import { useRouter } from "vue-router";
 const route = useRoute();
 const post = ref(null);
 
@@ -11,9 +13,35 @@ const comments = ref([]);
 const lastCommentId = ref(null);
 const loading = ref(false);
 const finished = ref(false);
-
+const username = useUsername();
+const router = useRouter();
 const observerTarget = ref(null); // 감지할 요소
 
+const editPost = () => {
+
+  router.push(`/posts/edit/${post.value.id}`)
+
+}
+
+const deletePostHandler = async () => {
+
+  if(!confirm("삭제하시겠습니까?")) return
+
+  try {
+
+    await deletePost(post.value.id)
+
+    alert("삭제 완료")
+
+    router.push("/")
+
+  } catch(err) {
+
+    alert(err.response?.data || "삭제 실패")
+
+  }
+
+}
 const fetchPost = async () => {
   const id = route.params.id;
   const res = await getPostDetail(id);
@@ -43,6 +71,11 @@ const fetchComments = async () => {
 
   loading.value = false;
 };
+
+const isAuthor = computed(() => {
+  if(!post.value) return false;
+  return username.value === post.value.author;
+});
 
 onMounted(() => {
 
@@ -74,6 +107,11 @@ onMounted(() => {
             <h3>{{ post.title }}</h3>
             <p>{{ post.content }}</p>
             <p>작성자 : {{ post.author }}</p>
+        </div>
+
+        <div v-if="isAuthor">
+          <button @click="editPost">수정</button>
+          <button @click="deletePostHandler">삭제</button>
         </div>
 
         <hr/>
