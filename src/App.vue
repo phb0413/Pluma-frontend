@@ -29,6 +29,8 @@ onMounted(async () => {
       <!-- login 안했을때 -->
       <button v-if="!accessToken" @click="$router.push('/login')">로그인</button>
 
+      <button v-if="!accessToken" @click="$router.push('signup')">회원가입</button>
+
       <!-- login 했을때-->
        <button v-if="accessToken" @click="$router.push('write')">글쓰기</button>
 

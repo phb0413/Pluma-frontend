@@ -30,3 +30,30 @@ export const refresh = async () => {
 
     return accessToken;
 }
+
+export const signup = async (username, email, password) => {
+
+    const res = await api.post("/auth/signup", {
+        username,
+        email,
+        password
+    });
+
+    return res;
+}
+
+export const checkUsername = async (username) => {
+    const res = await api.get("/auth/check-username", {
+        params: {username}
+    });
+
+    return res.data;
+}
+
+export const checkEmail = async (email) => {
+    const res = await api.get("/auth/check-email", {
+        params: {email}
+    });
+
+    return res.data;
+}
