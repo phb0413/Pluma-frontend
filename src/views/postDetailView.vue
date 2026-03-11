@@ -6,6 +6,8 @@ import { getCommentScroll } from "@/api/commentApi";
 import { useUsername } from "@/store/tokenStore";
 import { deletePost } from "@/api/postApi";
 import { useRouter } from "vue-router";
+import { createComment, updateComment, deleteComment } from "@/api/commentApi";
+
 const route = useRoute();
 const post = ref(null);
 
@@ -16,6 +18,13 @@ const finished = ref(false);
 const username = useUsername();
 const router = useRouter();
 const observerTarget = ref(null); // 감지할 요소
+
+// 댓글 작성
+const newComment = ref("");
+
+// 댓글 수정
+const editingCommentId = ref(null);
+const editingContent = ref("");
 
 const editPost = () => {
 
@@ -42,6 +51,7 @@ const deletePostHandler = async () => {
   }
 
 }
+
 const fetchPost = async () => {
   const id = route.params.id;
   const res = await getPostDetail(id);
@@ -72,10 +82,74 @@ const fetchComments = async () => {
   loading.value = false;
 };
 
+// 댓글 작성
+const submitComment = async () => {
+  if(!newComment.value.trim()) return;
+
+  try {
+    await createComment(route.params.id, newComment.value);
+
+    newComment.value = "";
+
+    // 댓글 다시 로드
+    comments.value = [];
+    lastCommentId.value = null;
+    finished.value = false;
+
+    fetchComments();
+
+  } catch (err) {
+    alert("댓글 작성 실패");
+  }
+}
+
+// 댓글 수정 시작
+const startEdit = (comment) => {
+  editingCommentId.value = comment.id;
+  editingContent.value = comment.content;
+}
+
+// 댓글 수정 저장
+const submitEdit = async (commentId) => {
+  
+  try {
+    await updateComment(commentId, editingContent.value);
+
+    const target = comments.value.find(c => c.id === commentId);
+
+    if(target) {
+      target.content = editingContent.value;
+    }
+    editingCommentId.value = null;
+  } catch (err) {
+    alert("수정 실패");
+  }
+};
+
+// 댓글 삭제
+const deleteCommentHandler = async (commentId) => {
+  if(!confirm("삭제하시겠습니까?")) return;
+
+  try {
+    await deleteComment(commentId);
+
+    comments.value = comments.value.filter(
+      c => c.id !== commentId
+    );
+  } catch (err) {
+    alert("삭제 실패");
+  }
+};
+
 const isAuthor = computed(() => {
   if(!post.value) return false;
   return username.value === post.value.author;
 });
+
+// 댓글 작성자 확인
+const isCommentAuthor = (comment) => {
+  return username.value === comment.author;
+};
 
 onMounted(() => {
 
@@ -100,36 +174,97 @@ onMounted(() => {
 });
 </script>
 <template>
-    <div>
-        <h2>게시글 상세</h2>
-        
-        <div v-if="post">
-            <h3>{{ post.title }}</h3>
-            <p>{{ post.content }}</p>
-            <p>작성자 : {{ post.author }}</p>
-        </div>
+  <div>
 
-        <div v-if="isAuthor">
-          <button @click="editPost">수정</button>
-          <button @click="deletePostHandler">삭제</button>
-        </div>
+  <h2>게시글 상세</h2>
 
-        <hr/>
+  <div v-if="post">
 
-        <h3>댓글</h3>
-        
-        <div v-for="comment in comments" :key="comment.id">
-            <p>{{ comment.content }}</p>
-            <small>{{ comment.author }}</small>
-            <hr/>
-        </div>
+  <h3>{{ post.title }}</h3>
 
-        <p v-if="loading">댓글 불러오는 중</p>
-        <p v-if="finished">댓글 끝</p>
+  <p>{{ post.content }}</p>
 
-        <!-- ⭐ 여기 중요 -->
-        <div ref="observerTarget" style="height:20px"></div>
-    </div>
+  <p>작성자 : {{ post.author }}</p>
+
+  </div>
+
+  <div v-if="isAuthor">
+
+  <button @click="editPost">수정</button>
+
+  <button @click="deletePostHandler">삭제</button>
+
+  </div>
+
+  <hr/>
+
+  <h3>댓글 작성</h3>
+
+  <textarea v-model="newComment" rows="3"></textarea>
+
+  <br>
+
+  <button @click="submitComment">
+  댓글 작성
+  </button>
+
+  <hr/>
+
+  <h3>댓글</h3>
+
+  <div v-for="comment in comments" :key="comment.id">
+
+  <!-- 수정 모드 -->
+
+  <div v-if="editingCommentId === comment.id">
+
+  <textarea v-model="editingContent"></textarea>
+
+  <br>
+
+  <button @click="submitEdit(comment.id)">
+  저장
+  </button>
+
+  <button @click="editingCommentId = null">
+  취소
+  </button>
+
+  </div>
+
+  <!-- 일반 모드 -->
+
+  <div v-else>
+
+  <p>{{ comment.content }}</p>
+
+  <small>{{ comment.author }}</small>
+
+  <div v-if="isCommentAuthor(comment)">
+
+  <button @click="startEdit(comment)">
+  수정
+  </button>
+
+  <button @click="deleteCommentHandler(comment.id)">
+  삭제
+  </button>
+
+  </div>
+
+  </div>
+
+  <hr/>
+
+  </div>
+
+  <p v-if="loading">댓글 불러오는 중</p>
+
+  <p v-if="finished">댓글 끝</p>
+
+  <div ref="observerTarget" style="height:20px"></div>
+
+  </div>
 </template>
 
 

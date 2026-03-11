@@ -8,3 +8,19 @@ export const getCommentScroll = (postId, lastCommentId, size = 5) => {
         }
     });
 };
+
+export const createComment = (postId, content) => {
+    return api.post(`/posts/${postId}/comments`, {
+        content
+    });
+};
+
+export const updateComment = (commentId, content) => {
+    return api.put(`/comments/${commentId}`, {
+        content
+    });
+};
+
+export const deleteComment = (commentId) => {
+    return api.delete(`/comments/${commentId}`);
+};
