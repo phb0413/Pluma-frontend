@@ -25,3 +25,17 @@ export const updatePost = (id, data) => {
 export const deletePost = (id) => {
     return api.delete(`/posts/${id}`);
 };
+
+// 게시글 페이지네이션
+export const getPostsPaged = (page = 0, size = 5) => {
+    return api.get("/posts/paged", {
+        params: {page,size}
+    });
+};
+
+// 게시글 검색
+export const searchPosts = (keyword, page = 0, size = 5) => {
+    return api.get("/posts/search", {
+        params: {keyword, page, size}
+    });
+};

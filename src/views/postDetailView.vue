@@ -1,62 +1,44 @@
 <script setup>
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { computed, onMounted, ref } from "vue";
-import { getPostDetail } from "@/api/postApi";
-import { getCommentScroll } from "@/api/commentApi";
+
+import { getPostDetail, deletePost } from "@/api/postApi";
+import { getCommentScroll, createComment, updateComment, deleteComment } from "@/api/commentApi";
+
 import { useUsername } from "@/store/tokenStore";
-import { deletePost } from "@/api/postApi";
-import { useRouter } from "vue-router";
-import { createComment, updateComment, deleteComment } from "@/api/commentApi";
 
 const route = useRoute();
+const router = useRouter();
+
 const post = ref(null);
+const username = useUsername();
 
 const comments = ref([]);
+
 const lastCommentId = ref(null);
 const loading = ref(false);
 const finished = ref(false);
-const username = useUsername();
-const router = useRouter();
-const observerTarget = ref(null); // 감지할 요소
 
-// 댓글 작성
+const observerTarget = ref(null);
+let observer = null;
+
+/* 댓글 작성 */
+
 const newComment = ref("");
 
-// 댓글 수정
+/* 댓글 수정 */
+
 const editingCommentId = ref(null);
 const editingContent = ref("");
 
-const editPost = () => {
-
-  router.push(`/posts/edit/${post.value.id}`)
-
-}
-
-const deletePostHandler = async () => {
-
-  if(!confirm("삭제하시겠습니까?")) return
-
-  try {
-
-    await deletePost(post.value.id)
-
-    alert("삭제 완료")
-
-    router.push("/")
-
-  } catch(err) {
-
-    alert(err.response?.data || "삭제 실패")
-
-  }
-
-}
+/* 게시글 조회 */
 
 const fetchPost = async () => {
-  const id = route.params.id;
-  const res = await getPostDetail(id);
+  const res = await getPostDetail(route.params.id);
   post.value = res.data;
 };
+
+/* 댓글 조회 (무한스크롤 핵심) */
 
 const fetchComments = async () => {
 
@@ -64,208 +46,308 @@ const fetchComments = async () => {
 
   loading.value = true;
 
-  const res = await getCommentScroll(
-    route.params.id,
-    lastCommentId.value
-  );
+  try {
 
-  const newComments = res.data.content;
+    const res = await getCommentScroll(
+      route.params.id,
+      lastCommentId.value
+    );
 
-  comments.value.push(...newComments);
+    const newComments = res.data.content;
 
-  if (newComments.length > 0) {
-    lastCommentId.value = newComments[newComments.length - 1].id;
+    comments.value.push(...newComments);
+
+    if (newComments.length > 0) {
+      lastCommentId.value = newComments[newComments.length - 1].id;
+    }
+
+    finished.value = res.data.last;
+
+  } catch (err) {
+
+    console.error("댓글 불러오기 실패", err);
+
+  } finally {
+
+    loading.value = false;
+
   }
 
-  finished.value = res.data.last;
-
-  loading.value = false;
 };
 
-// 댓글 작성
+/* 댓글 작성 */
+
 const submitComment = async () => {
-  if(!newComment.value.trim()) return;
+
+  if (!newComment.value.trim()) return;
 
   try {
+
     await createComment(route.params.id, newComment.value);
 
     newComment.value = "";
 
-    // 댓글 다시 로드
     comments.value = [];
     lastCommentId.value = null;
     finished.value = false;
 
-    fetchComments();
+    await fetchComments();
 
   } catch (err) {
-    alert("댓글 작성 실패");
-  }
-}
 
-// 댓글 수정 시작
+    alert("댓글 작성 실패");
+
+  }
+
+};
+
+/* 댓글 수정 시작 */
+
 const startEdit = (comment) => {
+
   editingCommentId.value = comment.id;
   editingContent.value = comment.content;
-}
 
-// 댓글 수정 저장
+};
+
+/* 댓글 수정 */
+
 const submitEdit = async (commentId) => {
-  
+
   try {
+
     await updateComment(commentId, editingContent.value);
 
     const target = comments.value.find(c => c.id === commentId);
 
-    if(target) {
+    if (target) {
       target.content = editingContent.value;
     }
+
     editingCommentId.value = null;
+
   } catch (err) {
+
     alert("수정 실패");
+
   }
+
 };
 
-// 댓글 삭제
+/* 댓글 삭제 */
+
 const deleteCommentHandler = async (commentId) => {
-  if(!confirm("삭제하시겠습니까?")) return;
+
+  if (!confirm("삭제하시겠습니까?")) return;
 
   try {
+
     await deleteComment(commentId);
 
     comments.value = comments.value.filter(
       c => c.id !== commentId
     );
+
   } catch (err) {
+
     alert("삭제 실패");
+
   }
+
 };
+
+/* 게시글 수정 */
+
+const editPost = () => {
+  router.push(`/posts/edit/${post.value.id}`);
+};
+
+/* 게시글 삭제 */
+
+const deletePostHandler = async () => {
+
+  if (!confirm("삭제하시겠습니까?")) return;
+
+  try {
+
+    await deletePost(post.value.id);
+
+    alert("삭제 완료");
+
+    router.push("/");
+
+  } catch (err) {
+
+    alert(err.response?.data || "삭제 실패");
+
+  }
+
+};
+
+/* 작성자 체크 */
 
 const isAuthor = computed(() => {
-  if(!post.value) return false;
+
+  if (!post.value) return false;
+
   return username.value === post.value.author;
+
 });
 
-// 댓글 작성자 확인
+/* 댓글 작성자 체크 */
+
 const isCommentAuthor = (comment) => {
+
   return username.value === comment.author;
+
 };
+
+/* IntersectionObserver */
 
 onMounted(() => {
 
   fetchPost();
   fetchComments();
 
-  const observer = new IntersectionObserver(
-  (entries) => {
-    if(entries[0].isIntersecting){
+  observer = new IntersectionObserver(
+
+    (entries) => {
+
+      if (entries[0].isIntersecting) {
+
         fetchComments();
+
+      }
+
+    },
+
+    {
+
+      root: null,
+      rootMargin: "200px",
+      threshold: 0
+
     }
-  },
-  {
-    rootMargin : "200px"
-  }
-);
+
+  );
 
   if (observerTarget.value) {
+
     observer.observe(observerTarget.value);
+
   }
 
 });
 </script>
+
 <template>
-  <div>
 
-  <h2>게시글 상세</h2>
+<div>
 
-  <div v-if="post">
+<h2>게시글 상세</h2>
 
-  <h3>{{ post.title }}</h3>
+<div v-if="post">
 
-  <p>{{ post.content }}</p>
+<h3>{{ post.title }}</h3>
 
-  <p>작성자 : {{ post.author }}</p>
+<p>{{ post.content }}</p>
 
-  </div>
+<p>작성자 : {{ post.author }}</p>
 
-  <div v-if="isAuthor">
+</div>
 
-  <button @click="editPost">수정</button>
+<div v-if="isAuthor">
 
-  <button @click="deletePostHandler">삭제</button>
+<button @click="editPost">수정</button>
 
-  </div>
+<button @click="deletePostHandler">삭제</button>
 
-  <hr/>
+</div>
 
-  <h3>댓글 작성</h3>
+<hr/>
 
-  <textarea v-model="newComment" rows="3"></textarea>
+<h3>댓글 작성</h3>
 
-  <br>
+<textarea v-model="newComment" rows="3"></textarea>
 
-  <button @click="submitComment">
-  댓글 작성
-  </button>
+<br>
 
-  <hr/>
+<button @click="submitComment">
+댓글 작성
+</button>
 
-  <h3>댓글</h3>
+<hr/>
 
-  <div v-for="comment in comments" :key="comment.id">
+<h3>댓글</h3>
 
-  <!-- 수정 모드 -->
+<!-- 댓글 스크롤 영역 -->
 
-  <div v-if="editingCommentId === comment.id">
+<div
+style="
+max-height:400px;
+overflow-y:auto;
+border:1px solid #ddd;
+padding:10px;
+"
+>
 
-  <textarea v-model="editingContent"></textarea>
+<div
+v-for="comment in comments"
+:key="comment.id"
+>
 
-  <br>
+<!-- 수정 모드 -->
 
-  <button @click="submitEdit(comment.id)">
-  저장
-  </button>
+<div v-if="editingCommentId === comment.id">
 
-  <button @click="editingCommentId = null">
-  취소
-  </button>
+<textarea v-model="editingContent"></textarea>
 
-  </div>
+<br>
 
-  <!-- 일반 모드 -->
+<button @click="submitEdit(comment.id)">
+저장
+</button>
 
-  <div v-else>
+<button @click="editingCommentId = null">
+취소
+</button>
 
-  <p>{{ comment.content }}</p>
+</div>
 
-  <small>{{ comment.author }}</small>
+<!-- 일반 모드 -->
 
-  <div v-if="isCommentAuthor(comment)">
+<div v-else>
 
-  <button @click="startEdit(comment)">
-  수정
-  </button>
+<p>{{ comment.content }}</p>
 
-  <button @click="deleteCommentHandler(comment.id)">
-  삭제
-  </button>
+<small>{{ comment.author }}</small>
 
-  </div>
+<div v-if="isCommentAuthor(comment)">
 
-  </div>
+<button @click="startEdit(comment)">
+수정
+</button>
 
-  <hr/>
+<button @click="deleteCommentHandler(comment.id)">
+삭제
+</button>
 
-  </div>
+</div>
 
-  <p v-if="loading">댓글 불러오는 중</p>
+</div>
 
-  <p v-if="finished">댓글 끝</p>
+<hr/>
 
-  <div ref="observerTarget" style="height:20px"></div>
+</div>
 
-  </div>
+<p v-if="loading">댓글 불러오는 중...</p>
+
+<p v-if="finished">댓글 끝</p>
+
+<div ref="observerTarget" style="height:20px"></div>
+
+</div>
+
+</div>
+
 </template>
-
-
-

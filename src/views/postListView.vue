@@ -1,31 +1,97 @@
 <script setup>
 import {ref, onMounted} from "vue";
 import {useRouter} from "vue-router";
-import { getPosts } from "@/api/postApi";
+import { getPostsPaged, searchPosts } from "@/api/postApi";
 
 const posts = ref([]);
 const router = useRouter();
 
-// 게시글 목록 가져오기
-onMounted(async () => {
-    const response = await getPosts();
-    posts.value = response.data.content ?? response.data;
-});
+const page = ref(0);
+const totalPages = ref(0);
+const size = 5;
+
+const keyword = ref("");
+const searching = ref(false);
+
+const fetchPosts = async () => {
+    try {
+        let res;
+
+        if(searching.value && keyword.value) {
+            res = await searchPosts(keyword.value, page.value, size);
+        } else {
+            res = await getPostsPaged(page.value, size);
+        }
+
+        posts.value = res.data.content;
+        totalPages.value = res.data.totalPages;
+    } catch (err) {
+        console.log(err);
+    }
+};
+
+const search = () => {
+    page.value = 0;
+    searching.value = true;
+    fetchPosts();
+}
+
+const changePage = (p) => {
+    page.value = p;
+    fetchPosts();
+}
 
 // 게시글 상세 페이지 이동
 const goDetail = (id) => {
     router.push(`/posts/${id}`);
 }
+// 게시글 목록 가져오기
+onMounted(() => {
+    fetchPosts();
+});
+
 </script>
 
 <template>
     <div>
-        <h1>게시글 목록입니당</h1>
-        <ul>
-            <li v-for="post in posts" :key="post.id" @click="goDetail(post.id)" style="cursor: pointer;">
-                {{post.title }}
-            </li>
-        </ul>
+        <h1>게시글 목록</h1>
+
+        <<!-- 검색 -->
+        <div style="margin-bottom: 20px;">
+
+            <input v-model="keyword" placeholder="검색어 입력" />
+
+            <button @click="search">검색</button>
+        </div>
+
+        <table border = "1" width="100%">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>제목</th>
+                    <th>작성자</th>
+                    <th>작성일</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                <tr v-for="post in posts" :key="post.id" @click="goDetail(post.id)" style="cursor: pointer;">
+                    <td>{{ post.id }}</td>
+                    <td>{{ post.title }}</td>
+                    <td>{{ post.author }}</td>
+                    <td>{{ post.createdAt }}</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- 페이지네이션 -->
+        
+        <div style="margin-top: 20px;">
+
+            <button v-for="p in totalPages" :key="p" @click="changePage(p-1)">
+                {{ p }}
+            </button>
+        </div>
     </div>
 </template>
 
