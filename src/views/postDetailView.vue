@@ -6,9 +6,13 @@ import { getPostDetail, deletePost } from "@/api/postApi";
 import { getCommentScroll, createComment, updateComment, deleteComment } from "@/api/commentApi";
 
 import { useUsername } from "@/store/tokenStore";
+import { toggleLike } from "@/api/likeApi";
 
 const route = useRoute();
 const router = useRouter();
+
+const likeCount = ref(0);
+const liked = ref(false);
 
 const post = ref(null);
 const username = useUsername();
@@ -36,6 +40,9 @@ const editingContent = ref("");
 const fetchPost = async () => {
   const res = await getPostDetail(route.params.id);
   post.value = res.data;
+
+  likeCount.value = res.data.likeCount;
+  liked.value = res.data.liked;
 };
 
 /* 댓글 조회 (무한스크롤 핵심) */
@@ -202,6 +209,22 @@ const isCommentAuthor = (comment) => {
 
 };
 
+/* 좋아요 클릭 */
+const clickLike = async () => {
+
+  try {
+
+    const res = await toggleLike(post.value.id);
+
+    likeCount.value = res.data;
+
+    liked.value = !liked.value;
+
+  } catch (err) {
+    alert("조아요 실패");
+  }
+}
+
 /* IntersectionObserver */
 
 onMounted(() => {
@@ -263,6 +286,16 @@ onMounted(() => {
 <button @click="deletePostHandler">삭제</button>
 
 </div>
+
+<button @click="clickLike">
+
+<span v-if="liked">❤️</span>
+
+<span v-else>🤍</span>
+
+{{ likeCount }}
+
+</button>
 
 <hr/>
 
