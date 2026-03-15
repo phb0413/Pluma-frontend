@@ -30,6 +30,21 @@ const fetchPosts = async () => {
     }
 };
 
+// 시간 표기 수정
+const formatDate = (dateString) => {
+
+    if(!dateString) return ""; // data 없을 경우
+
+    return new Intl.DateTimeFormat('ko-KR', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false // 24시간제 표기
+    }).format(new Date(dateString));
+};
+
 const search = () => {
     page.value = 0;
     searching.value = true;
@@ -79,7 +94,7 @@ onMounted(() => {
                     <td>{{ post.id }}</td>
                     <td>{{ post.title }}</td>
                     <td>{{ post.author }}</td>
-                    <td>{{ post.createdAt }}</td>
+                    <td>{{ formatDate(post.createdAt) }}</td>
                 </tr>
             </tbody>
         </table>
