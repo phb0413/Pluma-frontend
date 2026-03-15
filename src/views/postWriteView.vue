@@ -1,19 +1,34 @@
 <script setup>
-import { ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router'
 import { createPost } from '@/api/postApi';
+import Editor from '@toast-ui/editor';
+import "@toast-ui/editor/dist/toastui-editor.css";
 
 const router = useRouter();
 
 const title = ref("");
-const content = ref("");
+const editorRef = ref(null);
+let editor = null;
+
+onMounted(() => {
+    editor = new Editor({
+        el: editorRef.value,
+        height: "500px",
+        initialEditType: "markdown",
+        previewStyle: "vertical",
+        placeholder: "velog처럼 글 써보기"
+    });
+});
 
 const submitPost = async () => {
+
+    const content = editor.getMarkdown();
 
     try {
         await createPost({
             title: title.value,
-            content: content.value
+            content: content
         });
 
         alert("게시글 작성 성공");
@@ -27,15 +42,23 @@ const submitPost = async () => {
 
 <template>
 
-    <h2>게시글 작성</h2>
+<div>
 
-    <div>
-        <input v-model="title" placeholder="제목">
-    </div>
+<h2>게시글 작성</h2>
 
-    <div>
-        <textarea v-model="content" placeholder="내용"></textarea>
-    </div>
+<input
+v-model="title"
+placeholder="제목"
+style="width:100%; margin-bottom:10px"
+/>
 
-    <button @click="submitPost">작성</button>
+<div ref="editorRef"></div>
+
+<br>
+
+<button @click="submitPost">
+작성
+</button>
+
+</div>
 </template>

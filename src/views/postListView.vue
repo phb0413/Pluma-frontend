@@ -56,7 +56,7 @@ onMounted(() => {
     <div>
         <h1>게시글 목록</h1>
 
-        <<!-- 검색 -->
+        <!-- 검색 -->
         <div style="margin-bottom: 20px;">
 
             <input v-model="keyword" placeholder="검색어 입력" />

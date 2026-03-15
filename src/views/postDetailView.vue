@@ -7,6 +7,7 @@ import { getCommentScroll, createComment, updateComment, deleteComment } from "@
 
 import { useUsername } from "@/store/tokenStore";
 import { toggleLike } from "@/api/likeApi";
+import { marked } from "marked";
 
 const route = useRoute();
 const router = useRouter();
@@ -273,7 +274,7 @@ onMounted(() => {
 
 <h3>{{ post.title }}</h3>
 
-<p>{{ post.content }}</p>
+<div v-html="marked(post.content)"></div>
 
 <p>작성자 : {{ post.author }}</p>
 
