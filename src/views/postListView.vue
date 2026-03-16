@@ -2,6 +2,8 @@
 import {ref, onMounted} from "vue";
 import {useRouter} from "vue-router";
 import { getPostsPaged, searchPosts } from "@/api/postApi";
+import CommonButton from "@/components/CommonButton.vue";
+import PostCard from "@/components/PostCard.vue";
 
 const posts = ref([]);
 const router = useRouter();
@@ -68,45 +70,105 @@ onMounted(() => {
 </script>
 
 <template>
-    <div>
-        <h1>게시글 목록</h1>
-
-        <!-- 검색 -->
-        <div style="margin-bottom: 20px;">
-
-            <input v-model="keyword" placeholder="검색어 입력" />
-
-            <button @click="search">검색</button>
-        </div>
-
-        <table border = "1" width="100%">
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>제목</th>
-                    <th>작성자</th>
-                    <th>작성일</th>
-                </tr>
-            </thead>
-
-            <tbody>
-                <tr v-for="post in posts" :key="post.id" @click="goDetail(post.id)" style="cursor: pointer;">
-                    <td>{{ post.id }}</td>
-                    <td>{{ post.title }}</td>
-                    <td>{{ post.author }}</td>
-                    <td>{{ formatDate(post.createdAt) }}</td>
-                </tr>
-            </tbody>
-        </table>
-
-        <!-- 페이지네이션 -->
-        
-        <div style="margin-top: 20px;">
-
-            <button v-for="p in totalPages" :key="p" @click="changePage(p-1)">
-                {{ p }}
-            </button>
-        </div>
+  <div class="list-container">
+    <div class="list-header">
+      <h1>최신 게시글</h1>
+      
+      <div class="search-bar">
+        <input 
+          v-model="keyword" 
+          @keyup.enter="search"
+          placeholder="검색어를 입력하세요..." 
+          class="search-input"
+        />
+        <CommonButton label="검색" variant="primary" @click="search" />
+      </div>
     </div>
+
+    <div class="post-list" v-if="posts.length > 0">
+      <PostCard 
+        v-for="post in posts" 
+        :key="post.id" 
+        :post="post" 
+        :formatDate="formatDate"
+        @click="goDetail(post.id)"
+      />
+    </div>
+    
+    <div v-else class="no-posts">
+      게시글이 없습니다.
+    </div>
+
+    <div class="pagination" v-if="totalPages > 0">
+      <CommonButton 
+        v-for="p in totalPages" 
+        :key="p" 
+        :label="String(p)"
+        :variant="page === p - 1 ? 'primary' : 'secondary'"
+        @click="changePage(p - 1)"
+        class="page-btn"
+      />
+    </div>
+  </div>
 </template>
+
+<style scoped>
+.list-container {
+  max-width: 800px; /*  약간 좁게  */
+  margin: 0 auto;
+}
+
+.list-header {
+  margin-bottom: 2rem;
+}
+
+.list-header h1 {
+  font-size: 2rem;
+  color: #212529;
+  margin-bottom: 1.5rem;
+}
+
+.search-bar {
+  display: flex;
+  gap: 10px;
+}
+
+.search-input {
+  flex: 1;
+  padding: 0.5rem 1rem;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  outline: none;
+  font-size: 1rem;
+  transition: border-color 0.2s;
+}
+
+.search-input:focus {
+  border-color: #12b886;
+}
+
+.post-list {
+  margin-top: 1rem;
+}
+
+.no-posts {
+  padding: 5rem 0;
+  text-align: center;
+  color: #868e96;
+}
+
+.pagination {
+  margin-top: 3rem;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.page-btn {
+  min-width: 40px;
+  height: 40px;
+  padding: 0;
+}
+</style>
 

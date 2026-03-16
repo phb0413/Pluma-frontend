@@ -39,3 +39,10 @@ export const searchPosts = (keyword, page = 0, size = 5) => {
         params: {keyword, page, size}
     });
 };
+
+// 내가 쓴 게시글 호출
+export const getMyPosts = (page = 0, size = 5) => {
+    return api.get(`/posts/my`, {
+        params: { page, size }
+    });
+};

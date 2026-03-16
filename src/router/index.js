@@ -5,6 +5,7 @@ import loginView from "@/views/loginView.vue";
 import signupView from "@/views/signupView.vue";
 import PostWriteView from "@/views/postWriteView.vue";
 import PostEditView from "@/views/postEditView.vue";
+import MyPageView from "@/views/myPageView.vue";
 
 const router = createRouter({
     history : createWebHistory(),
@@ -32,6 +33,10 @@ const router = createRouter({
         {
             path:"/posts/edit/:id",
             component: PostEditView
+        },
+        {
+            path:"/mypage",
+            component: MyPageView
         }
     ],
 });

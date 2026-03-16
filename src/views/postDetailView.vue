@@ -8,6 +8,7 @@ import { getCommentScroll, createComment, updateComment, deleteComment } from "@
 import { useUsername } from "@/store/tokenStore";
 import { toggleLike } from "@/api/likeApi";
 import { marked } from "marked";
+import CommonButton from "@/components/CommonButton.vue";
 
 const route = useRoute();
 const router = useRouter();
@@ -35,6 +36,15 @@ const newComment = ref("");
 
 const editingCommentId = ref(null);
 const editingContent = ref("");
+
+/* 시간 포맷 함수 */
+const formatDate = (dateString) => {
+  if (!dateString) return "";
+  return new Intl.DateTimeFormat('ko-KR', {
+    year: 'numeric', month: 'long', day: 'numeric',
+    hour: '2-digit', minute: '2-digit'
+  }).format(new Date(dateString));
+};
 
 /* 게시글 조회 */
 
@@ -265,123 +275,226 @@ onMounted(() => {
 </script>
 
 <template>
+  <div class="post-detail-container">
+    <article v-if="post" class="post-article">
+      <header class="post-header">
+        <h1 class="post-title">{{ post.title }}</h1>
+        <div class="post-info">
+          <span class="author">{{ post.author }}</span>
+          <span class="separator">·</span>
+          <span class="date">{{ formatDate(post.createdAt) }}</span>
+          
+          <div v-if="isAuthor" class="author-actions">
+            <button class="text-btn" @click="editPost">수정</button>
+            <button class="text-btn delete" @click="deletePostHandler">삭제</button>
+          </div>
+        </div>
+      </header>
 
-<div>
+      <div class="post-content" v-html="marked(post.content)"></div>
 
-<h2>게시글 상세</h2>
+      <div class="like-section">
+        <button :class="['like-btn', { 'liked': liked }]" @click="clickLike">
+          <span class="heart">{{ liked ? '❤️' : '🤍' }}</span>
+          <span class="count">{{ likeCount }}</span>
+        </button>
+      </div>
+    </article>
 
-<div v-if="post">
+    <section class="comment-section">
+      <h3>{{ comments.length }}개의 댓글</h3>
+      
+      <div class="comment-write">
+        <textarea v-model="newComment" placeholder="댓글을 작성하세요" rows="3"></textarea>
+        <div class="comment-submit">
+          <CommonButton label="댓글 작성" variant="primary" @click="submitComment" />
+        </div>
+      </div>
 
-<h3>{{ post.title }}</h3>
+      <div class="comment-list">
+        <div v-for="comment in comments" :key="comment.id" class="comment-item">
+          <div class="comment-header">
+            <span class="comment-author">{{ comment.author }}</span>
+            <div v-if="isCommentAuthor(comment)" class="comment-actions">
+              <span @click="startEdit(comment)">수정</span>
+              <span @click="deleteCommentHandler(comment.id)">삭제</span>
+            </div>
+          </div>
 
-<div v-html="marked(post.content)"></div>
-
-<p>작성자 : {{ post.author }}</p>
-
-</div>
-
-<div v-if="isAuthor">
-
-<button @click="editPost">수정</button>
-
-<button @click="deletePostHandler">삭제</button>
-
-</div>
-
-<button @click="clickLike">
-
-<span v-if="liked">❤️</span>
-
-<span v-else>🤍</span>
-
-{{ likeCount }}
-
-</button>
-
-<hr/>
-
-<h3>댓글 작성</h3>
-
-<textarea v-model="newComment" rows="3"></textarea>
-
-<br>
-
-<button @click="submitComment">
-댓글 작성
-</button>
-
-<hr/>
-
-<h3>댓글</h3>
-
-<!-- 댓글 스크롤 영역 -->
-
-<div
-style="
-max-height:400px;
-overflow-y:auto;
-border:1px solid #ddd;
-padding:10px;
-"
->
-
-<div
-v-for="comment in comments"
-:key="comment.id"
->
-
-<!-- 수정 모드 -->
-
-<div v-if="editingCommentId === comment.id">
-
-<textarea v-model="editingContent"></textarea>
-
-<br>
-
-<button @click="submitEdit(comment.id)">
-저장
-</button>
-
-<button @click="editingCommentId = null">
-취소
-</button>
-
-</div>
-
-<!-- 일반 모드 -->
-
-<div v-else>
-
-<p>{{ comment.content }}</p>
-
-<small>{{ comment.author }}</small>
-
-<div v-if="isCommentAuthor(comment)">
-
-<button @click="startEdit(comment)">
-수정
-</button>
-
-<button @click="deleteCommentHandler(comment.id)">
-삭제
-</button>
-
-</div>
-
-</div>
-
-<hr/>
-
-</div>
-
-<p v-if="loading">댓글 불러오는 중...</p>
-
-<p v-if="finished">댓글 끝</p>
-
-<div ref="observerTarget" style="height:20px"></div>
-
-</div>
-
-</div>
-
+          <div v-if="editingCommentId === comment.id" class="comment-edit-form">
+            <textarea v-model="editingContent" class="edit-textarea"></textarea>
+            <div class="edit-btns">
+              <CommonButton label="취소" variant="secondary" @click="editingCommentId = null" />
+              <CommonButton label="저장" variant="primary" @click="submitEdit(comment.id)" />
+            </div>
+          </div>
+          
+          <div v-else class="comment-content">
+            {{ comment.content }}
+          </div>
+        </div>
+        
+        <div ref="observerTarget" class="scroll-target">
+          <p v-if="loading">댓글 불러오는 중...</p>
+          <p v-if="finished && comments.length > 0">모든 댓글을 읽었습니다.</p>
+        </div>
+      </div>
+    </section>
+  </div>
 </template>
+
+<style scoped>
+.post-detail-container {
+  max-width: 768px; /* 가독성을 위한 최적 너비 */
+  margin: 0 auto;
+  padding: 3rem 0;
+}
+
+.post-header {
+  margin-bottom: 3rem;
+}
+
+.post-title {
+  font-size: 3rem;
+  font-weight: 800;
+  color: #212529;
+  line-height: 1.5;
+  margin-bottom: 2rem;
+}
+
+.post-info {
+  display: flex;
+  align-items: center;
+  font-size: 1rem;
+  color: #495057;
+}
+
+.author {
+  font-weight: bold;
+}
+
+.separator {
+  margin: 0 0.5rem;
+}
+
+.author-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 10px;
+}
+
+.text-btn {
+  background: none;
+  border: none;
+  color: #868e96;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.text-btn:hover { color: #212529; }
+.text-btn.delete:hover { color: #fa5252; }
+
+/* 본문 스타일 */
+.post-content {
+  font-size: 1.125rem;
+  line-height: 1.7;
+  color: #212529;
+  margin-bottom: 5rem;
+}
+
+.post-content :deep(img) { max-width: 100%; }
+
+/* 좋아요 버튼 */
+.like-section {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 4rem;
+}
+
+.like-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: white;
+  border: 1px solid #dee2e6;
+  padding: 10px 20px;
+  border-radius: 2rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.like-btn:hover { border-color: #212529; }
+.like-btn.liked { border-color: #ff6b6b; background: #fff5f5; }
+
+/* 댓글 섹션 */
+.comment-section { margin-top: 5rem; }
+
+.comment-write {
+  margin: 1.5rem 0 3rem;
+}
+
+.comment-write textarea {
+  width: 100%;
+  padding: 1rem;
+  border: 1px solid #e9ecef;
+  border-radius: 4px;
+  resize: none;
+  font-size: 1rem;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.comment-submit {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.5rem;
+}
+
+.comment-item {
+  padding: 1.5rem 0;
+  border-bottom: 1px solid #f1f3f5;
+}
+
+.comment-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.comment-author {
+  font-weight: bold;
+  color: #212529;
+}
+
+.comment-actions {
+  font-size: 0.85rem;
+  color: #868e96;
+  display: flex;
+  gap: 10px;
+}
+
+.comment-actions span { cursor: pointer; }
+.comment-actions span:hover { text-decoration: underline; }
+
+.comment-content {
+  line-height: 1.6;
+  color: #212529;
+  white-space: pre-wrap;
+}
+
+/* 수정 폼 */
+.edit-textarea {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+.edit-btns { display: flex; justify-content: flex-end; gap: 5px; }
+
+.scroll-target {
+  text-align: center;
+  padding: 2rem;
+  color: #868e96;
+}
+</style>
