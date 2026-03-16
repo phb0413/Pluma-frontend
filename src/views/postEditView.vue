@@ -2,24 +2,45 @@
 import { onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { getPostDetail, updatePost } from '@/api/postApi';
+import Editor from '@toast-ui/editor';
+import "@toast-ui/editor/dist/toastui-editor.css";
 import CommonButton from '@/components/CommonButton.vue';
 
 const route = useRoute();
 const router = useRouter();
 
 const title = ref("");
-const content = ref("");
+const editorRef = ref(null);
+let editor = null;
 
-const fetchPost = async () => {
-    const res = await getPostDetail(route.params.id);
+const fetchAndInitEditor = async () => {
+  try {
+        // 1. 기존 게시글 데이터 조회
+        const res = await getPostDetail(route.params.id);
+        title.value = res.data.title;
+        const initialContent = res.data.content;
 
-    title.value = res.data.title;
-    content.value = res.data.content;
+        // 2. 에디터 생성
+        editor = new Editor({
+            el: editorRef.value,
+            height: "600px",
+            initialEditType: "markdown",
+            previewStyle: "vertical",
+            initialValue: initialContent, // 불러온 기존 내용을 여기에 삽입!
+            placeholder: "당신의 이야기를 수정해보세요...",
+            theme: 'default'
+        });
+    } catch (err) {
+        console.error(err);
+        alert("게시글을 불러오는 데 실패했습니다.");
+        router.back();
+    }
 }
 
 const submitEdit = async () => {
+  const content = editor.getMarkdown();
 
-    if (!title.value.trim() || !content.value.trim()) {
+    if (!title.value.trim() || !content.trim()) {
     alert("제목과 본문을 모두 입력해주세요.");
     return;
   }
@@ -27,7 +48,7 @@ const submitEdit = async () => {
     try {
         await updatePost(route.params.id, {
             title: title.value,
-            content: content.value
+            content: content
         });
 
         alert("수정 완료");
@@ -37,7 +58,9 @@ const submitEdit = async () => {
     }
 }
 
-onMounted(fetchPost)
+onMounted(() => {
+    fetchAndInitEditor();
+});
 </script>
 
 <template>
@@ -52,11 +75,7 @@ onMounted(fetchPost)
     </header>
 
     <div class="editor-wrapper">
-      <textarea 
-        v-model="content" 
-        class="content-textarea" 
-        placeholder="당신의 이야기를 수정해보세요..."
-      ></textarea>
+      <div ref="editorRef"></div>
     </div>
 
     <footer class="edit-footer">
@@ -108,25 +127,12 @@ onMounted(fetchPost)
   height: 6px;
   background: #12b886; /* 수정 페이지임을 알리는 민트색 포인트 */
   margin-bottom: 1.5rem;
+  border-radius: 1px;
 }
 
 /* 본문 영역 */
 .editor-wrapper {
-  flex: 1;
-  display: flex;
   margin-bottom: 5rem;
-}
-
-.content-textarea {
-  width: 100%;
-  min-height: 500px;
-  border: none;
-  outline: none;
-  font-size: 1.125rem;
-  line-height: 1.7;
-  color: #212529;
-  resize: none;
-  font-family: inherit;
 }
 
 /* 하단 고정 바 */
@@ -155,5 +161,15 @@ onMounted(fetchPost)
 .footer-right {
   display: flex;
   gap: 0.75rem;
+}
+
+/* Toast UI 에디터 커스텀 */
+:deep(.toastui-editor-defaultUI) {
+  border: none !important;
+}
+
+:deep(.toastui-editor-toolbar) {
+  background-color: #f8f9fa !important;
+  border-bottom: 1px solid #e9ecef !important;
 }
 </style>
