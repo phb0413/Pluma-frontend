@@ -2,7 +2,7 @@ import axios from "axios";
 import { getAccessToken, setAccessToken, clearAccessToken } from "@/store/tokenStore";
 
 const api = axios.create({
-    baseURL: "http://localhost:7080/api",
+    baseURL: import.meta.env.VITE_API_BASE_URL,
     withCredentials: true
 });
 
