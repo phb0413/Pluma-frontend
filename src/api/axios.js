@@ -26,7 +26,7 @@ api.interceptors.response.use(
 
             try {
                 const res = await axios.post(
-                    "http://localhost:7080/api/auth/refresh",
+                    `${import.meta.env.VITE_API_BASE_URL}/auth/refresh`,
                     {},
                     {withCredentials: true}
                 )
